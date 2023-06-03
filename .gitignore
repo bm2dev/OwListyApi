@@ -1,0 +1,46 @@
+Settings.cs
+
+# Pasta binária
+/bin/
+/obj/
+
+# Dependências do NuGet
+*.nuget.props
+*.nuget.targets
+*.user
+
+# Logs
+*.log
+
+# Visual Studio
+.vs/
+.vscode/
+*.suo
+*.userprefs
+*.vsps
+*.vssscc
+*.bak
+
+# Ferramentas de compilação
+_ReSharper*/
+*.resharper*
+ReSharper*/
+*.DotSettings.user
+
+# Arquivos de compilação gerados
+*.csproj.user
+*.cache
+*.docs
+*.pdb
+*.gpState
+*.dotCover
+
+# Ferramentas de testes
+testresults/
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# Pacotes de publicação
+*.nupkg
+**/node_modules/
+npm-debug.log*
