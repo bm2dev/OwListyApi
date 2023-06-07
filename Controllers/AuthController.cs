@@ -271,10 +271,8 @@ namespace OwListy.Controllers
                 if (user == null)
                     return NotFound();
 
-                string validationToken = BCrypt.Net.BCrypt.HashPassword(
-                    $"{user.Id}{DateTime.Now.ToString()}"
-                );
-                string resetLink = $"https://localhost:7213/{validationToken}";
+                string randomCode = Utils.GenerateRandomCode();
+                string validationToken = BCrypt.Net.BCrypt.HashPassword(randomCode);
 
                 user.ValidationToken = validationToken;
                 user.ValidationTokenExp = DateTime.Now.AddMinutes(5);
@@ -288,7 +286,7 @@ namespace OwListy.Controllers
                 await EmailService.SendEmail(
                     user.Email,
                     "Recuperação de Senha",
-                    emailTemplate.Replace("{{resetLink}}", resetLink)
+                    emailTemplate.Replace("{{code}}", randomCode)
                 );
 
                 return Ok(
@@ -311,14 +309,16 @@ namespace OwListy.Controllers
 
             try
             {
-                var user = await _context.Users.FirstOrDefaultAsync(
-                    u => u.ValidationToken == model.ValidationToken
-                );
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
                 if (user == null)
                     return NotFound(new { message = "Usuário não encontrado." });
 
-                if (user.ValidationTokenExp < DateTime.Now)
-                    return Unauthorized(new { message = "Token inválido." });
+                if (
+                    user.ValidationTokenExp < DateTime.Now
+                    || !BCrypt.Net.BCrypt.Verify(model.ValidationCode, user.ValidationToken)
+                )
+                    return Unauthorized(new { message = "Código inválido." });
+
                 if (BCrypt.Net.BCrypt.Verify(model.NewPassword, user.PasswordHash))
                     return BadRequest(new { message = "Você já utiliza essa senha." });
 

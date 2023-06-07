@@ -231,17 +231,19 @@ namespace OwListy.Controllers
                 if (group == null)
                     return NotFound(new { message = "Grupo não encontrado." });
 
-                var user = await _context.Users.FirstOrDefaultAsync(i => i.Id == model.UserId);
+                var user = await _context.Users.FirstOrDefaultAsync(
+                    i => i.Email == model.UserEmail
+                );
                 if (user == null)
                     return NotFound(new { message = "Usuário não encontrado." });
 
                 var existingMember = await _context.GroupMembers.FirstOrDefaultAsync(
-                    i => i.GroupId == model.GroupId && i.UserId == model.UserId
+                    i => i.GroupId == model.GroupId && i.UserId == user.Id
                 );
                 if (existingMember != null)
                     return BadRequest(new { message = "Usuário já é membro do grupo." });
 
-                var newMember = new GroupMember { GroupId = model.GroupId, UserId = model.UserId };
+                var newMember = new GroupMember { GroupId = model.GroupId, UserId = user.Id };
 
                 await _context.GroupMembers.AddAsync(newMember);
                 await _context.SaveChangesAsync();
