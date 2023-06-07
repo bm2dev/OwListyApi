@@ -14,52 +14,114 @@ namespace OwListy.Controllers
     public class ListsController : ControllerBase
     {
         private readonly OwListyDbContext _context;
-        public ListsController(OwListyDbContext context) { _context = context; }
 
-        [HttpGet("{groupId}")]
+        public ListsController(OwListyDbContext context)
+        {
+            _context = context;
+        }
+
+        [HttpGet("{listId}")]
+        public async Task<ActionResult> GetList(int listId)
+        {
+            try
+            {
+                var list = await _context.Lists
+                    .Include(g => g.ListItems)
+                    .Select(
+                        l =>
+                            new
+                            {
+                                Id = l.Id,
+                                Title = l.Title,
+                                Color = l.Color,
+                                GroupId = l.GroupId,
+                                CreatedAt = l.CreatedAt,
+                                UpdatedAt = l.UpdatedAt,
+                                LastItems = l.ListItems
+                                    .OrderByDescending(i => i.CreatedAt)
+                                    .Take(3)
+                                    .Select(
+                                        i =>
+                                            new
+                                            {
+                                                Id = i.Id,
+                                                Content = i.Content,
+                                                Completed = i.Completed,
+                                            }
+                                    )
+                                    .ToList()
+                            }
+                    )
+                    .FirstOrDefaultAsync(i => i.Id == listId);
+
+                if (list == null)
+                    return NotFound();
+
+                var response = list;
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Erro ao buscar lista.", error = ex.Message });
+            }
+        }
+
+        [HttpGet("{groupId}/lists")]
         public async Task<ActionResult> GetGroupLists(int groupId)
         {
             try
             {
                 var lists = await _context.Lists
-                .Include(g => g.ListItems)
-                .Where(l => l.GroupId == groupId)
-                .Select(l => new
-                {
-                    Id = l.Id,
-                    Title = l.Title,
-                    Color = l.Color,
-                    GroupId = l.GroupId,
-                    CreatedAt = l.CreatedAt,
-                    UpdatedAt = l.UpdatedAt,
-                    LastItems = l.ListItems
-                    .OrderByDescending(i => i.CreatedAt)
-                    .Take(3)
-                    .Select(i => new
-                    {
-                        Id = i.Id,
-                        Content = i.Content,
-                        Completed = i.Completed,
-                    }).ToList()
-                }).ToListAsync();
+                    .Include(g => g.ListItems)
+                    .Where(l => l.GroupId == groupId)
+                    .Select(
+                        l =>
+                            new
+                            {
+                                Id = l.Id,
+                                Title = l.Title,
+                                Color = l.Color,
+                                GroupId = l.GroupId,
+                                CreatedAt = l.CreatedAt,
+                                UpdatedAt = l.UpdatedAt,
+                                LastItems = l.ListItems
+                                    .OrderByDescending(i => i.CreatedAt)
+                                    .Take(3)
+                                    .Select(
+                                        i =>
+                                            new
+                                            {
+                                                Id = i.Id,
+                                                Content = i.Content,
+                                                Completed = i.Completed,
+                                            }
+                                    )
+                                    .ToList()
+                            }
+                    )
+                    .ToListAsync();
 
                 return Ok(lists);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = "Erro ao buscar listas do grupo.", error = ex.Message });
+                return BadRequest(
+                    new { message = "Erro ao buscar listas do grupo.", error = ex.Message }
+                );
             }
         }
 
         [HttpPost("create")]
         public async Task<ActionResult> CreateList([FromBody] CreateListViewModel model)
         {
-            if (!ModelState.IsValid) return BadRequest();
+            if (!ModelState.IsValid)
+                return BadRequest();
 
             try
             {
                 var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == model.GroupId);
-                if (group == null) return NotFound(new { message = "Grupo não encontrado." });
+                if (group == null)
+                    return NotFound(new { message = "Grupo não encontrado." });
 
                 var list = new List
                 {
@@ -83,19 +145,23 @@ namespace OwListy.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = "Erro ao criar nova lista.", error = ex.Message });
+                return BadRequest(
+                    new { message = "Erro ao criar nova lista.", error = ex.Message }
+                );
             }
         }
 
         [HttpPut("update")]
         public async Task<ActionResult> UpdateList([FromBody] UpdateListViewModel model)
         {
-            if (!ModelState.IsValid) return BadRequest();
+            if (!ModelState.IsValid)
+                return BadRequest();
 
             try
             {
                 var list = await _context.Lists.FirstOrDefaultAsync(l => l.Id == model.Id);
-                if (list == null) return NotFound(new { message = "Lista não encontrada." });
+                if (list == null)
+                    return NotFound(new { message = "Lista não encontrada." });
 
                 list.Title = model.Title;
                 list.Color = model.Color;
@@ -122,12 +188,16 @@ namespace OwListy.Controllers
         [HttpDelete("delete")]
         public async Task<ActionResult> DeleteList([FromBody] DeleteListViewModel model)
         {
-            if (!ModelState.IsValid) return BadRequest();
+            if (!ModelState.IsValid)
+                return BadRequest();
 
             try
             {
-                var list = await _context.Lists.Include(l => l.ListItems).FirstOrDefaultAsync(l => l.Id == model.ListId);
-                if (list == null) return NotFound(new { message = "Lista não encontrada." });
+                var list = await _context.Lists
+                    .Include(l => l.ListItems)
+                    .FirstOrDefaultAsync(l => l.Id == model.ListId);
+                if (list == null)
+                    return NotFound(new { message = "Lista não encontrada." });
 
                 var listItems = list.ListItems.ToList();
                 _context.ListItems.RemoveRange(listItems);
@@ -149,37 +219,46 @@ namespace OwListy.Controllers
             try
             {
                 var list = await _context.Lists.FirstOrDefaultAsync(l => l.Id == listId);
-                if (list == null) return NotFound(new { message = "Lista não encontrada." });
+                if (list == null)
+                    return NotFound(new { message = "Lista não encontrada." });
 
                 var listItems = await _context.ListItems
-                .OrderByDescending(i => i.CreatedAt)
-                .Where(i => i.ListId == listId)
-                .Select(i => new
-                {
-                    Id = i.Id,
-                    Content = i.Content,
-                    Completed = i.Completed,
-                    CreatedAt = i.CreatedAt,
-                    UpdatedAt = i.UpdatedAt,
-                }).ToListAsync();
+                    .OrderByDescending(i => i.CreatedAt)
+                    .Where(i => i.ListId == listId)
+                    .Select(
+                        i =>
+                            new
+                            {
+                                Id = i.Id,
+                                Content = i.Content,
+                                Completed = i.Completed,
+                                CreatedAt = i.CreatedAt,
+                                UpdatedAt = i.UpdatedAt,
+                            }
+                    )
+                    .ToListAsync();
 
                 return Ok(listItems);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = "Erro ao buscar itens da lista.", error = ex.Message });
+                return BadRequest(
+                    new { message = "Erro ao buscar itens da lista.", error = ex.Message }
+                );
             }
         }
 
         [HttpPost("items/create")]
         public async Task<ActionResult> CreateListItem([FromBody] CreateListItemViewModel model)
         {
-            if (!ModelState.IsValid) return BadRequest();
+            if (!ModelState.IsValid)
+                return BadRequest();
 
             try
             {
                 var list = await _context.Lists.FirstOrDefaultAsync(l => l.Id == model.ListId);
-                if (list == null) return NotFound(new { message = "Lista não encontrada." });
+                if (list == null)
+                    return NotFound(new { message = "Lista não encontrada." });
 
                 var listItem = new ListItem
                 {
@@ -211,12 +290,14 @@ namespace OwListy.Controllers
         [HttpPut("items/update")]
         public async Task<ActionResult> UpdateListItem([FromBody] UpdateListItemViewModel model)
         {
-            if (!ModelState.IsValid) return BadRequest();
+            if (!ModelState.IsValid)
+                return BadRequest();
 
             try
             {
                 var listItem = await _context.ListItems.FirstOrDefaultAsync(i => i.Id == model.Id);
-                if (listItem == null) return NotFound(new { message = "Item não encontrado." });
+                if (listItem == null)
+                    return NotFound(new { message = "Item não encontrado." });
 
                 listItem.Content = model.Content;
                 listItem.Completed = model.Completed;
@@ -245,12 +326,16 @@ namespace OwListy.Controllers
         [HttpDelete("items/delete")]
         public async Task<ActionResult> DeleteListItem([FromBody] DeleteListItemViewModel model)
         {
-            if (!ModelState.IsValid) return BadRequest();
+            if (!ModelState.IsValid)
+                return BadRequest();
 
             try
             {
-                var listItem = await _context.ListItems.FirstOrDefaultAsync(i => i.Id == model.ListItemId);
-                if (listItem == null) return NotFound(new { message = "Item não encontrado." });
+                var listItem = await _context.ListItems.FirstOrDefaultAsync(
+                    i => i.Id == model.ListItemId
+                );
+                if (listItem == null)
+                    return NotFound(new { message = "Item não encontrado." });
 
                 _context.ListItems.Remove(listItem);
                 await _context.SaveChangesAsync();
