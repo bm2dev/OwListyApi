@@ -55,7 +55,7 @@ builder.Services.AddSwaggerGen(c =>
             Scheme = "Bearer",
             BearerFormat = "JWT",
             In = ParameterLocation.Header,
-            Description = "Insira o token JWT no formato 'Bearer {token}'",
+            Description = "Insira o token JWT",
             Name = "Authorization"
         }
     );
